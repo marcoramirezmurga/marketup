@@ -147,6 +147,10 @@
   .loc-btn{margin-top:8px;background:#fff;border:1.5px solid var(--mu-red);color:var(--mu-red);font-weight:700;font-size:12.5px;padding:8px 12px;border-radius:8px;width:100%;}
   .loc-status{font-size:12px;color:var(--mu-ink-soft);margin-top:6px;}
   .loc-status.ok{color:#1E7A34;font-weight:700;}
+  .wa-hint{
+    max-width:920px;margin:0 auto;padding:0 16px 10px;color:#fff;font-size:12px;
+    text-align:right;opacity:.9;
+  }
 
   /* ---------- OVERLAY DE AGRADECIMIENTO ---------- */
   .thanks-overlay{
@@ -205,6 +209,7 @@
       <span>Confirmar</span>
     </button>
   </div>
+  <div class="wa-hint" id="waHint"></div>
 </div>
 
 <div class="thanks-overlay" id="thanksOverlay">
@@ -267,6 +272,7 @@
   function updateQty(item, delta){
     const key = comboKey(item);
     const current = (cart[key] && cart[key].qty) || 0;
+    const wasEmpty = Object.keys(cart).length === 0;
     const next = Math.max(0, current + delta);
     if(next === 0){
       delete cart[key];
@@ -281,6 +287,9 @@
     }
     syncCardDisplay(item);
     renderCartSummary();
+    if(wasEmpty && Object.keys(cart).length > 0){
+      document.getElementById('ticket').classList.add('open');
+    }
   }
 
   function renderCard(item, categoryName){
@@ -366,6 +375,16 @@
   function updateWaBtnState(){
     const lines = Object.values(cart);
     document.getElementById('waBtn').disabled = lines.length === 0 || !deliveryIsValid();
+    const hint = document.getElementById('waHint');
+    if(lines.length === 0){
+      hint.textContent = '';
+    } else if(!delivery.method){
+      hint.textContent = '👆 Tocá el resumen de arriba y elegí cómo recibís el pedido';
+    } else if(delivery.method === 'delivery' && !deliveryIsValid()){
+      hint.textContent = '👆 Falta la dirección o la ubicación para el delivery';
+    } else {
+      hint.textContent = '';
+    }
   }
 
   function renderDeliveryBlock(){
@@ -499,6 +518,7 @@
   document.getElementById('thanksSendBtn').onclick = () => {
     if(lastWhatsappUrl) window.open(lastWhatsappUrl, '_blank');
     document.getElementById('thanksOverlay').classList.remove('open');
+    document.getElementById('ticket').classList.remove('open');
     Object.keys(cart).forEach(k => delete cart[k]);
     delivery.method = null; delivery.address = ''; delivery.mapsUrl = null;
     document.querySelectorAll('.qty').forEach(el => el.textContent = '0');
