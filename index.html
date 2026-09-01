@@ -8,6 +8,13 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Urbanist:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
 <meta name="theme-color" content="#AB1C1F">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-32.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MarketUP">
+<meta name="description" content="Catálogo e imprenta, sublimación y láser — pedidos directo por WhatsApp.">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
@@ -31,16 +38,53 @@
   h1,h2,h3{font-family:'Urbanist',sans-serif;font-weight:800;margin:0;}
   button{font-family:inherit;}
 
-  /* ---------- SPLASH (intro 3s) ---------- */
+  /* ---------- SPLASH (intro 3s, animada) ---------- */
   .splash{
     position:fixed;inset:0;z-index:1000;background:var(--mu-red);
     display:flex;flex-direction:column;align-items:center;justify-content:center;
     gap:14px;transition:opacity .5s ease;
   }
   .splash.hide{opacity:0;pointer-events:none;}
-  .splash .dots{width:100px;height:auto;}
-  .splash .dots.flip{transform:scaleY(-1);}
-  .splash .badge{width:78px;height:78px;margin:6px 0;}
+  .splash .dots{width:100px;height:auto;opacity:0;}
+  .splash .badge{width:78px;height:78px;margin:6px 0;opacity:0;}
+
+  @keyframes dotsPopInTop{
+    0%{opacity:0;transform:scale(.5);}
+    65%{opacity:1;transform:scale(1.06);}
+    100%{opacity:1;transform:scale(1);}
+  }
+  @keyframes dotsPopInBottom{
+    0%{opacity:0;transform:scaleY(-1) scale(.5);}
+    65%{opacity:1;transform:scaleY(-1) scale(1.06);}
+    100%{opacity:1;transform:scaleY(-1) scale(1);}
+  }
+  @keyframes dotsGlow{
+    0%,100%{opacity:1;}
+    50%{opacity:.72;}
+  }
+  @keyframes badgeIn{
+    0%{opacity:0;transform:scale(.35) rotate(-22deg);}
+    60%{opacity:1;transform:scale(1.12) rotate(4deg);}
+    82%{transform:scale(.95) rotate(-2deg);}
+    100%{opacity:1;transform:scale(1) rotate(0deg);}
+  }
+  @keyframes badgePulse{
+    0%,100%{transform:scale(1);}
+    50%{transform:scale(1.06);}
+  }
+
+  .splash .dots{
+    animation: dotsPopInTop .6s cubic-bezier(.34,1.56,.64,1) .05s both,
+               dotsGlow 2.2s ease-in-out .7s infinite;
+  }
+  .splash .dots.flip{
+    animation: dotsPopInBottom .6s cubic-bezier(.34,1.56,.64,1) .15s both,
+               dotsGlow 2.2s ease-in-out .8s infinite;
+  }
+  .splash .badge{
+    animation: badgeIn .7s cubic-bezier(.34,1.56,.64,1) .3s both,
+               badgePulse 1.9s ease-in-out 1.15s infinite;
+  }
 
   /* ---------- HEADER ---------- */
   header{
@@ -67,17 +111,55 @@
   .cat-pill.active{background:var(--mu-red);color:#fff;}
 
   /* ---------- SECCIONES / GRID ---------- */
-  main{max-width:920px;margin:0 auto;padding:24px 18px 40px;}
+  main{max-width:920px;margin:0 auto;padding:24px 18px calc(24px + 82px);}
   .cat-section{margin-bottom:40px;scroll-margin-top:120px;}
+  .cat-section + .cat-section{border-top:1px solid var(--mu-line);padding-top:36px;}
   .cat-section h2{font-size:21px;color:var(--mu-ink);margin-bottom:4px;}
   .cat-section .cat-count{color:var(--mu-ink-soft);font-size:13px;font-weight:600;margin-bottom:18px;display:block;}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:28px 20px;}
+
+  /* ---------- RESPONSIVE: tablet / desktop ---------- */
+  @media (min-width:640px){
+    header{padding:20px 32px;}
+    .cat-nav{max-width:1200px;margin:0 auto;padding:14px 32px;}
+    main{max-width:1200px;padding:32px 32px calc(32px + 82px);}
+    .cat-section h2{font-size:24px;}
+    .grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:36px 26px;}
+    .cart-inner{max-width:1200px;padding:16px 32px;}
+    .checkout-content{padding:32px 24px;}
+  }
+  @media (min-width:1100px){
+    main{max-width:1320px;}
+    .cat-nav{max-width:1320px;}
+    .cart-inner{max-width:1320px;}
+    .grid{grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:40px 28px;}
+  }
 
   /* ---------- TARJETA DE ÍTEM (estilo plano, sin caja) ---------- */
   .card{display:flex;flex-direction:column;position:relative;}
   .card.agotado{opacity:.6;}
   .card .img-wrap{position:relative;aspect-ratio:1/1;background:var(--mu-placeholder);border-radius:4px;overflow:hidden;}
   .card .img-wrap img{width:100%;height:100%;object-fit:cover;display:block;}
+  .card .img-wrap.zoomable{cursor:zoom-in;}
+  .card .zoom-hint{
+    position:absolute;bottom:6px;right:6px;background:rgba(48,48,48,.65);color:#fff;
+    width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    pointer-events:none;
+  }
+  .card .zoom-hint svg{width:14px;height:14px;}
+
+  /* ---------- LIGHTBOX (ver imagen ampliada) ---------- */
+  .lightbox{
+    position:fixed;inset:0;z-index:500;background:rgba(20,20,20,.92);
+    display:none;align-items:center;justify-content:center;padding:40px 16px;
+    cursor:zoom-out;
+  }
+  .lightbox.open{display:flex;}
+  .lightbox img{max-width:100%;max-height:100%;border-radius:6px;object-fit:contain;cursor:default;}
+  .lightbox-close{
+    position:absolute;top:18px;right:18px;background:rgba(255,255,255,.15);border:none;color:#fff;
+    width:42px;height:42px;border-radius:50%;font-size:20px;cursor:pointer;
+  }
   .card .badge-agotado{
     position:absolute;top:8px;right:8px;background:var(--mu-ink);color:#fff;
     font-size:11px;font-weight:800;padding:3px 8px;border-radius:6px;
@@ -203,7 +285,6 @@
   }
 
   /* ---------- FOOTER ---------- */
-  footer{background:var(--mu-ink);padding:34px 16px calc(34px + 82px);text-align:center;}
   footer .mu-badge{width:52px;height:52px;margin:0 auto 10px;}
   footer p{color:#B9B7B6;font-size:12.5px;margin:0;}
 </style>
@@ -250,6 +331,11 @@
   <div class="checkout-content" id="checkoutContent"></div>
 </div>
 
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" id="lightboxClose" aria-label="Cerrar">✕</button>
+  <img id="lightboxImg" src="" alt="">
+</div>
+
 <div class="thanks-overlay" id="thanksOverlay">
   <div class="thanks-box">
     <svg class="thanks-badge" viewBox="0 0 98 98" xmlns="http://www.w3.org/2000/svg">
@@ -263,15 +349,6 @@
     <button class="thanks-btn-primary" id="thanksSendBtn">Enviar pedido por WhatsApp</button>
   </div>
 </div>
-
-<footer>
-  <svg class="mu-badge" viewBox="0 0 98 98" xmlns="http://www.w3.org/2000/svg">
-    <path fill="#AB1C1F" d="M59.11,98h-20.22C17.45,98,0,80.55,0,59.11v-20.22C0,17.45,17.45,0,38.89,0h20.22c21.44,0,38.89,17.45,38.89,38.89v20.22c0,21.44-17.45,38.89-38.89,38.89Z"/>
-    <path fill="#fff" d="M30.9,64.71v-23.69h9.12v23.45c0,6.75,3.38,10.25,8.94,10.25s8.94-3.38,8.94-9.95v-23.75h9.12v23.4c0,12.56-7.05,18.72-18.18,18.72s-17.95-6.22-17.95-18.42"/>
-    <polygon fill="#303030" points="67.1 38.96 49.03 21.63 30.97 38.96 30.97 14.87 67.1 14.87 67.1 38.96"/>
-  </svg>
-  <p>Producción gráfica</p>
-</footer>
 
 <script>
   // ⚠️ Reemplazá con tu número real (código de país + número, sin espacios ni +)
@@ -368,9 +445,14 @@
       ? `<span class="price-note">${item.price_note}</span>`
       : '';
 
+    const zoomHint = item.image_url
+      ? `<span class="zoom-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M11 8v6M8 11h6"/></svg></span>`
+      : '';
+
     card.innerHTML = `
-      <div class="img-wrap">
+      <div class="img-wrap${item.image_url ? ' zoomable' : ''}">
         ${imgHtml}
+        ${zoomHint}
         ${item.status === 'agotado' ? '<span class="badge-agotado">Agotado</span>' : ''}
       </div>
       <div class="body">
@@ -401,9 +483,28 @@
         syncCardDisplay(item);
       };
     });
+    if(item.image_url){
+      card.querySelector('.img-wrap').onclick = () => openLightbox(item.image_url, item.name);
+    }
 
     return card;
   }
+
+  function openLightbox(src, alt){
+    document.getElementById('lightboxImg').src = src;
+    document.getElementById('lightboxImg').alt = alt || '';
+    document.getElementById('lightbox').classList.add('open');
+  }
+  function closeLightbox(){
+    document.getElementById('lightbox').classList.remove('open');
+  }
+  document.getElementById('lightboxClose').onclick = closeLightbox;
+  document.getElementById('lightbox').onclick = (e) => {
+    if(e.target.id === 'lightbox') closeLightbox();
+  };
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape') closeLightbox();
+  });
 
   function deliveryIsValid(){
     if(delivery.method === 'oficina') return true;
@@ -691,6 +792,12 @@
   loadCatalog();
 
   setTimeout(() => { document.getElementById('splash').classList.add('hide'); }, 3000);
+
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
 </script>
 
 </body>
