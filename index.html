@@ -25,7 +25,7 @@
   *{box-sizing:border-box;}
   body{
     margin:0;background:var(--mu-bg);color:var(--mu-ink);
-    font-family:'Urbanist',sans-serif;padding-bottom:110px;
+    font-family:'Urbanist',sans-serif;
     -webkit-font-smoothing:antialiased;
   }
   h1,h2,h3{font-family:'Urbanist',sans-serif;font-weight:800;margin:0;}
@@ -125,6 +125,34 @@
     padding:13px 22px;font-weight:800;font-size:15px;cursor:pointer;
   }
   .cart-toggle-btn:disabled{background:#5a5a5a;opacity:.6;cursor:not-allowed;}
+
+  /* ---------- CHECKOUT — pantalla completa por pasos ---------- */
+  .checkout-overlay{
+    position:fixed;inset:0;z-index:300;background:#fff;
+    display:none;flex-direction:column;
+  }
+  .checkout-overlay.open{display:flex;}
+  .checkout-header{
+    flex:0 0 auto;padding:16px 16px 14px;border-bottom:1px solid var(--mu-line);
+    position:relative;background:#fff;
+  }
+  .checkout-close{
+    position:absolute;top:14px;right:14px;background:none;border:none;
+    font-size:20px;color:var(--mu-ink-soft);cursor:pointer;width:36px;height:36px;
+  }
+  .step-indicator{display:flex;align-items:center;justify-content:center;gap:6px;max-width:420px;margin:8px auto 0;}
+  .step-dot{
+    width:30px;height:30px;border-radius:50%;background:var(--mu-line);color:var(--mu-ink-soft);
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13.5px;flex:0 0 auto;
+  }
+  .step-dot.active{background:var(--mu-red);color:#fff;}
+  .step-dot.done{background:var(--mu-ink);color:#fff;}
+  .step-line{flex:1 1 auto;height:3px;background:var(--mu-line);border-radius:2px;}
+  .step-line.done{background:var(--mu-ink);}
+  .step-labels{display:flex;justify-content:center;gap:0;max-width:420px;margin:6px auto 0;text-align:center;}
+  .step-labels span{flex:1;font-size:10.5px;font-weight:700;color:var(--mu-ink-soft);}
+  .checkout-content{flex:1 1 auto;overflow-y:auto;padding:20px 18px 24px;max-width:520px;margin:0 auto;width:100%;}
+  .checkout-content h2{font-size:19px;color:var(--mu-ink);margin-bottom:16px;}
   .wa-btn{
     background:var(--mu-green);color:#fff;border:none;border-radius:999px;
     padding:15px 22px;display:flex;align-items:center;justify-content:center;gap:10px;
@@ -133,23 +161,17 @@
   .wa-btn:disabled{background:#9bb;opacity:.5;cursor:not-allowed;}
   .wa-btn svg{width:22px;height:22px;flex:0 0 auto;}
 
-  /* ---------- TICKET (resumen paso a paso) ---------- */
-  #ticket{
-    display:none;max-width:920px;margin:0 auto;background:#fff;color:var(--mu-ink);
-    border-top:1px solid var(--mu-line);max-height:60vh;overflow-y:auto;padding:14px 16px;
-  }
-  #ticket.open{display:block;}
-  .ticket-step-label{font-size:11.5px;font-weight:800;color:var(--mu-ink-soft);text-transform:uppercase;letter-spacing:.03em;margin-bottom:10px;}
-  .ticket-row{display:flex;justify-content:space-between;padding:8px 0;font-size:14.5px;border-bottom:1px solid var(--mu-line);}
-  .ticket-empty{color:var(--mu-ink-soft);font-size:13px;padding:10px 0;text-align:center;}
+  /* ---------- CONTENIDO DE PASOS (reutiliza clases dentro de .checkout-content) ---------- */
+  .ticket-row{display:flex;justify-content:space-between;padding:10px 0;font-size:15px;border-bottom:1px solid var(--mu-line);}
+  .ticket-empty{color:var(--mu-ink-soft);font-size:14px;padding:30px 0;text-align:center;}
   .step-next-btn{
     background:var(--mu-red);color:#fff;border:none;border-radius:10px;
-    padding:15px 18px;font-weight:800;font-size:15.5px;cursor:pointer;width:100%;margin-top:14px;
+    padding:16px 18px;font-weight:800;font-size:16px;cursor:pointer;width:100%;margin-top:18px;
   }
   .step-next-btn:disabled{background:var(--mu-placeholder);color:var(--mu-ink-soft);cursor:not-allowed;}
   .step-back-btn{
-    background:none;border:none;color:var(--mu-ink-soft);font-weight:700;font-size:13px;
-    padding:0 0 12px;cursor:pointer;
+    background:none;border:none;color:var(--mu-ink-soft);font-weight:700;font-size:14px;
+    padding:0 0 16px;cursor:pointer;
   }
 
   /* ---------- ENTREGA ---------- */
@@ -170,7 +192,8 @@
     display:none;align-items:center;justify-content:center;padding:20px;
   }
   .thanks-overlay.open{display:flex;}
-  .thanks-box{background:#fff;border-radius:18px;padding:26px 22px;max-width:340px;text-align:center;}
+  .thanks-box{background:#fff;border-radius:18px;padding:30px 22px 26px;max-width:340px;text-align:center;}
+  .thanks-box .thanks-badge{width:56px;height:56px;margin:0 auto 14px;}
   .thanks-box h3{color:var(--mu-red);font-size:19px;margin-bottom:8px;}
   .thanks-box p{color:var(--mu-ink-soft);font-size:14px;margin:0 0 4px;}
   #thanksTotal{font-weight:800;color:var(--mu-ink);margin-bottom:18px;display:block;}
@@ -180,7 +203,7 @@
   }
 
   /* ---------- FOOTER ---------- */
-  footer{background:var(--mu-ink);padding:34px 16px;text-align:center;}
+  footer{background:var(--mu-ink);padding:34px 16px calc(34px + 82px);text-align:center;}
   footer .mu-badge{width:52px;height:52px;margin:0 auto 10px;}
   footer p{color:#B9B7B6;font-size:12.5px;margin:0;}
 </style>
@@ -210,7 +233,6 @@
 </main>
 
 <div class="cart-bar">
-  <div id="ticket"></div>
   <div class="cart-inner">
     <button id="ticketToggle">
       <span class="count" id="cartCount">0 productos</span>
@@ -220,9 +242,22 @@
   </div>
 </div>
 
+<div class="checkout-overlay" id="checkoutOverlay">
+  <div class="checkout-header">
+    <button class="checkout-close" id="checkoutCloseBtn" aria-label="Cerrar">✕</button>
+    <div class="step-indicator" id="stepIndicator"></div>
+  </div>
+  <div class="checkout-content" id="checkoutContent"></div>
+</div>
+
 <div class="thanks-overlay" id="thanksOverlay">
   <div class="thanks-box">
-    <h3>¡Pedido listo!</h3>
+    <svg class="thanks-badge" viewBox="0 0 98 98" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#303030" d="M59.11,98h-20.22C17.45,98,0,80.55,0,59.11v-20.22C0,17.45,17.45,0,38.89,0h20.22c21.44,0,38.89,17.45,38.89,38.89v20.22c0,21.44-17.45,38.89-38.89,38.89Z"/>
+      <path fill="#fff" d="M30.9,64.71v-23.69h9.12v23.45c0,6.75,3.38,10.25,8.94,10.25s8.94-3.38,8.94-9.95v-23.75h9.12v23.4c0,12.56-7.05,18.72-18.18,18.72s-17.95-6.22-17.95-18.42"/>
+      <polygon fill="#AB1C1F" points="67.1 38.96 49.03 21.63 30.97 38.96 30.97 14.87 67.1 14.87 67.1 38.96"/>
+    </svg>
+    <h3>¡Gracias por tu pedido!</h3>
     <p>Ahora confirmalo por WhatsApp para que lo recibamos.</p>
     <span id="thanksTotal"></span>
     <button class="thanks-btn-primary" id="thanksSendBtn">Enviar pedido por WhatsApp</button>
@@ -280,7 +315,6 @@
   function updateQty(item, delta){
     const key = comboKey(item);
     const current = (cart[key] && cart[key].qty) || 0;
-    const wasEmpty = Object.keys(cart).length === 0;
     const next = Math.max(0, current + delta);
     if(next === 0){
       delete cart[key];
@@ -295,9 +329,6 @@
     }
     syncCardDisplay(item);
     renderCartSummary();
-    if(wasEmpty && Object.keys(cart).length > 0){
-      document.getElementById('ticket').classList.add('open');
-    }
   }
 
   function renderCard(item, categoryName){
@@ -383,7 +414,6 @@
   function renderDeliveryBlock(){
     return `
       <div class="delivery-block">
-        <div class="delivery-title">¿Cómo recibís tu pedido?</div>
         <label class="delivery-option">
           <input type="radio" name="deliveryMethod" value="oficina" ${delivery.method==='oficina'?'checked':''}>
           Recoger en oficina
@@ -399,23 +429,13 @@
             <div class="loc-status ${delivery.mapsUrl ? 'ok' : ''}" id="locStatus">${delivery.mapsUrl ? '✓ Ubicación capturada' : ''}</div>
           </div>
         ` : ''}
-        <div class="delivery-hint" id="deliveryHint"></div>
-        <button class="wa-btn" id="waBtn" disabled>
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.85.5 3.58 1.37 5.07L2 22l5.06-1.33A9.93 9.93 0 0 0 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18a7.9 7.9 0 0 1-4.05-1.11l-.29-.17-3 .79.8-2.93-.19-.3A7.93 7.93 0 1 1 12 20zm4.4-5.9c-.24-.12-1.43-.7-1.65-.78-.22-.08-.38-.12-.54.12s-.62.78-.76.94-.28.18-.52.06a6.5 6.5 0 0 1-1.91-1.18 7.15 7.15 0 0 1-1.32-1.64c-.14-.24 0-.36.1-.48.11-.11.24-.28.36-.42a1.6 1.6 0 0 0 .24-.4.44.44 0 0 0 0-.42c-.06-.12-.54-1.3-.74-1.78-.2-.47-.4-.4-.54-.41h-.46a.9.9 0 0 0-.65.3 2.7 2.7 0 0 0-.84 2 4.7 4.7 0 0 0 1 2.5 10.8 10.8 0 0 0 4.13 3.65c.58.25 1.03.4 1.38.51a3.3 3.3 0 0 0 1.53.1 2.5 2.5 0 0 0 1.64-1.15 2 2 0 0 0 .14-1.15c-.06-.1-.22-.16-.46-.28z"/></svg>
-          <span>Confirmar y enviar por WhatsApp</span>
-        </button>
       </div>
     `;
   }
 
-  function refreshDeliveryValidity(){
-    const valid = deliveryIsValid();
-    const btn = document.getElementById('waBtn');
-    const hint = document.getElementById('deliveryHint');
-    if(btn) btn.disabled = !valid;
-    if(hint) hint.textContent = (!delivery.method) ? 'Elegí una opción para continuar'
-      : (delivery.method === 'delivery' && !valid) ? 'Escribí tu dirección o usá el botón de ubicación'
-      : '';
+  function refreshStep2Button(){
+    const btn = document.getElementById('goToConfirmBtn');
+    if(btn) btn.disabled = !deliveryIsValid();
   }
 
   function bindDeliveryHandlers(){
@@ -424,7 +444,7 @@
     });
     const addressEl = document.getElementById('deliveryAddress');
     if(addressEl){
-      addressEl.oninput = (e) => { delivery.address = e.target.value; refreshDeliveryValidity(); };
+      addressEl.oninput = (e) => { delivery.address = e.target.value; refreshStep2Button(); };
     }
     const locBtn = document.getElementById('useLocationBtn');
     if(locBtn){
@@ -450,26 +470,42 @@
         );
       };
     }
-    document.getElementById('waBtn').onclick = submitOrder;
-    refreshDeliveryValidity();
+    refreshStep2Button();
   }
 
-  let checkoutStep = 'items'; // 'items' | 'delivery'
+  const STEP_LABELS = ['Tu pedido', 'Entrega', 'Confirmar'];
+  const STEP_KEYS = ['items', 'delivery', 'confirm'];
+  let checkoutStep = 'items';
+
+  function renderStepIndicator(){
+    const activeIdx = STEP_KEYS.indexOf(checkoutStep);
+    let dots = '';
+    STEP_LABELS.forEach((label, i) => {
+      const cls = i < activeIdx ? 'done' : i === activeIdx ? 'active' : '';
+      dots += `<div class="step-dot ${cls}">${i < activeIdx ? '✓' : i+1}</div>`;
+      if(i < STEP_LABELS.length - 1){
+        dots += `<div class="step-line ${i < activeIdx ? 'done' : ''}"></div>`;
+      }
+    });
+    document.getElementById('stepIndicator').innerHTML = dots;
+  }
 
   function renderStep(){
     const lines = Object.values(cart);
     const totalPrice = lines.reduce((s,l) => s + l.qty * l.unitPrice, 0);
-    const ticket = document.getElementById('ticket');
+    const content = document.getElementById('checkoutContent');
 
     if(lines.length === 0){
       checkoutStep = 'items';
-      ticket.innerHTML = '<div class="ticket-empty">Aún no agregaste productos</div>';
+      document.getElementById('checkoutOverlay').classList.remove('open');
       return;
     }
 
+    renderStepIndicator();
+
     if(checkoutStep === 'items'){
-      ticket.innerHTML = `
-        <div class="ticket-step-label">Paso 1 de 2 — Tu pedido</div>
+      content.innerHTML = `
+        <h2>Tu pedido</h2>
         ${lines.map(l => `
           <div class="ticket-row">
             <span>${l.name}${l.variantLabel ? ' ('+l.variantLabel+')' : ''} × ${l.qty}</span>
@@ -482,14 +518,44 @@
         <button class="step-next-btn" id="goToDeliveryBtn">Continuar → Elegir entrega</button>
       `;
       document.getElementById('goToDeliveryBtn').onclick = () => { checkoutStep = 'delivery'; renderStep(); };
-    } else {
-      ticket.innerHTML = `
-        <div class="ticket-step-label">Paso 2 de 2 — Entrega</div>
+
+    } else if(checkoutStep === 'delivery'){
+      content.innerHTML = `
         <button class="step-back-btn" id="backToItemsBtn">← Volver a mi pedido</button>
+        <h2>¿Cómo recibís tu pedido?</h2>
         ${renderDeliveryBlock()}
+        <button class="step-next-btn" id="goToConfirmBtn" ${deliveryIsValid()?'':'disabled'}>Continuar → Confirmar</button>
       `;
       document.getElementById('backToItemsBtn').onclick = () => { checkoutStep = 'items'; renderStep(); };
+      document.getElementById('goToConfirmBtn').onclick = () => { checkoutStep = 'confirm'; renderStep(); };
       bindDeliveryHandlers();
+
+    } else {
+      const deliveryText = delivery.method === 'oficina'
+        ? 'Retiro en oficina'
+        : `Delivery${delivery.address.trim() ? ' — '+delivery.address.trim() : ''}${delivery.mapsUrl ? ' (con ubicación GPS)' : ''}`;
+      content.innerHTML = `
+        <button class="step-back-btn" id="backToDeliveryBtn">← Volver a entrega</button>
+        <h2>Confirmá tu pedido</h2>
+        ${lines.map(l => `
+          <div class="ticket-row">
+            <span>${l.name}${l.variantLabel ? ' ('+l.variantLabel+')' : ''} × ${l.qty}</span>
+            <span>${fmt(l.qty * l.unitPrice)} Bs.</span>
+          </div>
+        `).join('')}
+        <div class="ticket-row" style="font-weight:800;border-top:1.5px solid var(--mu-red);margin-top:4px;padding-top:8px;">
+          <span>Total</span><span>${fmt(totalPrice)} Bs.</span>
+        </div>
+        <div class="ticket-row" style="border-bottom:none;">
+          <span>Entrega</span><span style="text-align:right;max-width:60%;">${deliveryText}</span>
+        </div>
+        <button class="wa-btn" id="waBtn">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.85.5 3.58 1.37 5.07L2 22l5.06-1.33A9.93 9.93 0 0 0 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18a7.9 7.9 0 0 1-4.05-1.11l-.29-.17-3 .79.8-2.93-.19-.3A7.93 7.93 0 1 1 12 20zm4.4-5.9c-.24-.12-1.43-.7-1.65-.78-.22-.08-.38-.12-.54.12s-.62.78-.76.94-.28.18-.52.06a6.5 6.5 0 0 1-1.91-1.18 7.15 7.15 0 0 1-1.32-1.64c-.14-.24 0-.36.1-.48.11-.11.24-.28.36-.42a1.6 1.6 0 0 0 .24-.4.44.44 0 0 0 0-.42c-.06-.12-.54-1.3-.74-1.78-.2-.47-.4-.4-.54-.41h-.46a.9.9 0 0 0-.65.3 2.7 2.7 0 0 0-.84 2 4.7 4.7 0 0 0 1 2.5 10.8 10.8 0 0 0 4.13 3.65c.58.25 1.03.4 1.38.51a3.3 3.3 0 0 0 1.53.1 2.5 2.5 0 0 0 1.64-1.15 2 2 0 0 0 .14-1.15c-.06-.1-.22-.16-.46-.28z"/></svg>
+          <span>Enviar pedido por WhatsApp</span>
+        </button>
+      `;
+      document.getElementById('backToDeliveryBtn').onclick = () => { checkoutStep = 'delivery'; renderStep(); };
+      document.getElementById('waBtn').onclick = submitOrder;
     }
   }
 
@@ -502,11 +568,19 @@
     document.getElementById('cartTotal').textContent = fmt(totalPrice) + ' Bs.';
     document.getElementById('cartToggleBtn').disabled = lines.length === 0;
 
-    renderStep();
+    if(document.getElementById('checkoutOverlay').classList.contains('open')){
+      renderStep();
+    }
   }
 
-  document.getElementById('ticketToggle').onclick = () => document.getElementById('ticket').classList.toggle('open');
-  document.getElementById('cartToggleBtn').onclick = () => document.getElementById('ticket').classList.toggle('open');
+  function openCheckout(){
+    if(Object.keys(cart).length === 0) return;
+    renderStep();
+    document.getElementById('checkoutOverlay').classList.add('open');
+  }
+  document.getElementById('ticketToggle').onclick = openCheckout;
+  document.getElementById('cartToggleBtn').onclick = openCheckout;
+  document.getElementById('checkoutCloseBtn').onclick = () => document.getElementById('checkoutOverlay').classList.remove('open');
 
   let lastWhatsappUrl = '';
 
@@ -545,6 +619,7 @@
     }catch(e){ console.warn('No se pudo registrar el pedido:', e); }
 
     lastWhatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
+    document.getElementById('checkoutOverlay').classList.remove('open');
     document.getElementById('thanksTotal').textContent = `Total del pedido: ${fmt(totalPrice)} Bs.`;
     document.getElementById('thanksOverlay').classList.add('open');
   }
@@ -552,7 +627,6 @@
   document.getElementById('thanksSendBtn').onclick = () => {
     if(lastWhatsappUrl) window.open(lastWhatsappUrl, '_blank');
     document.getElementById('thanksOverlay').classList.remove('open');
-    document.getElementById('ticket').classList.remove('open');
     Object.keys(cart).forEach(k => delete cart[k]);
     delivery.method = null; delivery.address = ''; delivery.mapsUrl = null;
     checkoutStep = 'items';
