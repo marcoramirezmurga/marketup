@@ -6,6 +6,8 @@
 <title>MarketUP — Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Urbanist:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <style>
   :root{
     --mu-red:#AB1C1F; --mu-red-dark:#8A1518; --mu-ink:#303030; --mu-ink-soft:#4D4D4D;
@@ -65,6 +67,20 @@
   .item-actions{display:flex;gap:6px;flex-wrap:wrap;}
   .cat-group-title{margin:18px 0 4px;color:var(--mu-red);font-size:14px;font-weight:800;}
 
+  /* pedidos */
+  .filter-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
+  .filter-chip{background:#fff;border:1.5px solid var(--mu-line);border-radius:999px;padding:6px 14px;font-size:12.5px;font-weight:700;color:var(--mu-ink-soft);cursor:pointer;}
+  .filter-chip.active{background:var(--mu-red);border-color:var(--mu-red);color:#fff;}
+  #ordersSearch{max-width:240px;flex:1;min-width:160px;}
+  table.orders-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  table.orders-table th{text-align:left;color:var(--mu-ink-soft);font-size:11px;text-transform:uppercase;padding:6px 8px;border-bottom:1.5px solid var(--mu-line);}
+  table.orders-table td{padding:8px;border-bottom:1px solid var(--mu-line);vertical-align:top;}
+  .badge{font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px;text-transform:uppercase;white-space:nowrap;}
+  .badge.pendiente{background:#FFF4E0;color:#B4670A;}
+  .badge.entregado{background:#E4F5E8;color:#1E7A34;}
+  .status-btn{background:var(--mu-red);color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;}
+  .report-btn{background:var(--mu-ink);color:#fff;border:none;border-radius:8px;padding:10px 16px;font-weight:700;font-size:13px;margin-bottom:16px;}
+
   /* form dinamico */
   .dyn-row{display:flex;gap:8px;margin-bottom:8px;align-items:center;}
   .dyn-row input{flex:1;}
@@ -106,6 +122,7 @@
   <div class="tabs">
     <button class="tab active" data-panel="categorias">Categorías</button>
     <button class="tab" data-panel="items">Ítems</button>
+    <button class="tab" data-panel="pedidos">Pedidos</button>
   </div>
 
   <!-- CATEGORÍAS -->
@@ -197,6 +214,26 @@
       <div id="itemsList"></div>
     </div>
   </div>
+
+  <!-- PEDIDOS -->
+  <div class="panel" id="panel-pedidos">
+    <div class="card">
+      <button class="report-btn" id="downloadReportBtn">Descargar reporte semanal (PDF)</button>
+      <div class="filter-row">
+        <button class="filter-chip active" data-status="todos">Todos</button>
+        <button class="filter-chip" data-status="pendiente">Pendientes</button>
+        <button class="filter-chip" data-status="entregado">Entregados</button>
+        <input type="text" id="ordersSearch" placeholder="Buscar por producto o dirección">
+      </div>
+      <div id="ordersEmpty" class="hint" style="display:none;">Todavía no hay pedidos.</div>
+      <table class="orders-table" id="ordersTable" style="display:none;">
+        <thead>
+          <tr><th>Fecha</th><th>Detalle</th><th>Entrega</th><th>Total</th><th>Estado</th><th></th></tr>
+        </thead>
+        <tbody id="ordersBody"></tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -205,6 +242,7 @@
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth:{ persistSession:true, autoRefreshToken:true } });
 
   function fmt(n){ return Number(n).toLocaleString('es-BO',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function fmtDate(d){ return new Date(d).toLocaleString('es-BO',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
   function slugify(s){
     return s.toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
       .toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
@@ -228,6 +266,7 @@
     document.getElementById('dashboard').style.display = 'block';
     loadCategories();
     loadItems();
+    loadOrders();
   }
 
   // ---------- TABS ----------
@@ -504,6 +543,212 @@
     if(error){ alert('No se pudo eliminar: ' + error.message); return; }
     loadItems();
   };
+
+  // ============================================================
+  // PEDIDOS
+  // ============================================================
+  let allOrders = [];
+  let orderStatusFilter = 'todos';
+  let orderSearchTerm = '';
+
+  async function loadOrders(){
+    const { data, error } = await sb.from('orders').select('*').order('created_at', { ascending:false });
+    allOrders = (!error && data) ? data : [];
+    renderOrders();
+  }
+
+  function deliveryLabel(o){
+    if(o.delivery_method === 'delivery'){
+      const parts = [];
+      if(o.delivery_address) parts.push(o.delivery_address);
+      if(o.delivery_maps_url) parts.push(`<a href="${o.delivery_maps_url}" target="_blank">ver mapa</a>`);
+      return 'Delivery' + (parts.length ? ' — ' + parts.join(' · ') : '');
+    }
+    if(o.delivery_method === 'oficina') return 'Retiro en oficina';
+    return '—';
+  }
+
+  function renderOrders(){
+    const table = document.getElementById('ordersTable');
+    const empty = document.getElementById('ordersEmpty');
+    const body = document.getElementById('ordersBody');
+    body.innerHTML = '';
+
+    let filtered = allOrders;
+    if(orderStatusFilter !== 'todos') filtered = filtered.filter(o => o.status === orderStatusFilter);
+    if(orderSearchTerm){
+      const term = orderSearchTerm.toLowerCase();
+      filtered = filtered.filter(o => {
+        const detail = (o.items || []).map(i => i.name).join(' ').toLowerCase();
+        const addr = (o.delivery_address || '').toLowerCase();
+        return detail.includes(term) || addr.includes(term);
+      });
+    }
+
+    if(filtered.length === 0){
+      table.style.display = 'none';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+    table.style.display = 'table';
+
+    filtered.forEach(o => {
+      const detail = (o.items || []).map(i => `${i.name}${i.variant ? ' ('+i.variant+')' : ''} x${i.qty}`).join(', ');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${fmtDate(o.created_at)}</td>
+        <td>${detail}</td>
+        <td>${deliveryLabel(o)}</td>
+        <td>${fmt(o.total)} Bs.</td>
+        <td><span class="badge ${o.status}">${o.status}</span></td>
+        <td><button class="status-btn" data-id="${o.id}" data-next="${o.status==='pendiente'?'entregado':'pendiente'}">Marcar ${o.status==='pendiente'?'entregado':'pendiente'}</button></td>
+      `;
+      body.appendChild(tr);
+    });
+
+    body.querySelectorAll('.status-btn').forEach(b => {
+      b.onclick = async () => {
+        await sb.from('orders').update({ status: b.dataset.next }).eq('id', b.dataset.id);
+        loadOrders();
+      };
+    });
+  }
+
+  document.getElementById('ordersSearch').oninput = (e) => { orderSearchTerm = e.target.value.trim(); renderOrders(); };
+  document.querySelectorAll('.filter-chip').forEach(chip => {
+    chip.onclick = () => {
+      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      orderStatusFilter = chip.dataset.status;
+      renderOrders();
+    };
+  });
+
+  // ---------- REPORTE SEMANAL (PDF) ----------
+  document.getElementById('downloadReportBtn').onclick = () => generateWeeklyReport();
+
+  function generateWeeklyReport(){
+    const btn = document.getElementById('downloadReportBtn');
+    btn.disabled = true;
+    btn.textContent = 'Generando...';
+
+    try{
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit:'pt', format:'a4' });
+      const pageW = doc.internal.pageSize.getWidth();
+      const marginX = 40;
+      const RED = [171, 28, 31];
+      const INK = [48, 48, 48];
+      const INK_SOFT = [77, 77, 77];
+
+      const now = new Date();
+      const start = new Date(now); start.setDate(start.getDate() - 6); start.setHours(0,0,0,0);
+      const weekOrders = allOrders.filter(o => new Date(o.created_at) >= start);
+      const totalRevenue = weekOrders.reduce((s,o) => s + Number(o.total || 0), 0);
+      const totalOrders = weekOrders.length;
+      const avgTicket = totalOrders ? totalRevenue / totalOrders : 0;
+      const delivered = weekOrders.filter(o => o.status === 'entregado').length;
+      const pending = weekOrders.filter(o => o.status === 'pendiente').length;
+      const deliveryCount = weekOrders.filter(o => o.delivery_method === 'delivery').length;
+      const officeCount = weekOrders.filter(o => o.delivery_method === 'oficina').length;
+
+      const fd = (d) => d.toLocaleDateString('es-BO', { day:'2-digit', month:'2-digit', year:'numeric' });
+
+      let y = 46;
+      doc.setTextColor(...RED);
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(20);
+      doc.text('MarketUP', marginX, y);
+      doc.setFontSize(12.5);
+      doc.setTextColor(...INK_SOFT);
+      doc.setFont('helvetica','normal');
+      doc.text('Reporte semanal de pedidos', marginX, y+20);
+      doc.setFontSize(9.5);
+      doc.text(`Del ${fd(start)} al ${fd(now)}`, marginX, y+36);
+
+      doc.setDrawColor(...RED);
+      doc.setLineWidth(2);
+      doc.line(marginX, y+50, pageW-marginX, y+50);
+      y += 78;
+
+      const cardW = (pageW - marginX*2 - 30) / 4;
+      const cards = [
+        ['Pedidos', String(totalOrders)],
+        ['Ingresos', `${totalRevenue.toFixed(2)} Bs.`],
+        ['Ticket prom.', `${avgTicket.toFixed(2)} Bs.`],
+        ['Pend. / Entreg.', `${pending} / ${delivered}`],
+      ];
+      cards.forEach((c,i) => {
+        const cx = marginX + i*(cardW+10);
+        doc.setFillColor(247,246,245);
+        doc.roundedRect(cx, y, cardW, 56, 6, 6, 'F');
+        doc.setTextColor(...INK_SOFT);
+        doc.setFontSize(8);
+        doc.setFont('helvetica','bold');
+        doc.text(c[0].toUpperCase(), cx+10, y+17);
+        doc.setTextColor(...RED);
+        doc.setFontSize(14);
+        doc.text(c[1], cx+10, y+39);
+      });
+      y += 86;
+
+      doc.setTextColor(...INK);
+      doc.setFontSize(11.5);
+      doc.setFont('helvetica','bold');
+      doc.text(`Entregas: ${deliveryCount} delivery · ${officeCount} retiro en oficina`, marginX, y);
+      y += 20;
+
+      const days = [];
+      for(let i=0;i<7;i++){
+        const d = new Date(start); d.setDate(start.getDate()+i);
+        const dayOrders = weekOrders.filter(o => new Date(o.created_at).toDateString() === d.toDateString());
+        const dayRevenue = dayOrders.reduce((s,o)=> s+Number(o.total||0), 0);
+        days.push([fd(d), String(dayOrders.length), `${dayRevenue.toFixed(2)} Bs.`]);
+      }
+
+      doc.setFontSize(12);
+      doc.text('Pedidos por día', marginX, y);
+      y += 10;
+      doc.autoTable({
+        startY: y, margin:{left:marginX,right:marginX},
+        head:[['Fecha','Pedidos','Ingresos']], body:days, theme:'plain',
+        headStyles:{ fillColor:RED, textColor:[255,255,255], fontStyle:'bold', fontSize:9 },
+        bodyStyles:{ fontSize:9, textColor:INK },
+        alternateRowStyles:{ fillColor:[247,246,245] },
+      });
+      y = doc.lastAutoTable.finalY + 26;
+
+      const totals = {};
+      weekOrders.forEach(o => (o.items||[]).forEach(i => { totals[i.name] = (totals[i.name]||0) + (i.qty||0); }));
+      const sorted = Object.entries(totals).sort((a,b)=>b[1]-a[1]);
+
+      doc.setFontSize(12);
+      doc.text('Productos más pedidos esta semana', marginX, y);
+      y += 10;
+      if(sorted.length === 0){
+        doc.setFont('helvetica','normal');
+        doc.setFontSize(9);
+        doc.setTextColor(...INK_SOFT);
+        doc.text('No hubo pedidos en este período.', marginX, y+14);
+      } else {
+        doc.autoTable({
+          startY:y, margin:{left:marginX,right:marginX},
+          head:[['Producto','Unidades pedidas']], body:sorted.map(([n,q])=>[n,String(q)]), theme:'plain',
+          headStyles:{ fillColor:INK, textColor:[255,255,255], fontStyle:'bold', fontSize:9 },
+          bodyStyles:{ fontSize:9, textColor:INK },
+          alternateRowStyles:{ fillColor:[247,246,245] },
+        });
+      }
+
+      doc.save(`marketup-reporte-${fd(now).replace(/\//g,'-')}.pdf`);
+    }catch(e){
+      alert('No se pudo generar el reporte: ' + e.message);
+    }finally{
+      btn.disabled = false;
+      btn.textContent = 'Descargar reporte semanal (PDF)';
+    }
+  }
 
   resetForm();
   checkSession();

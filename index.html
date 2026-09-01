@@ -137,6 +137,17 @@
   .ticket-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13.5px;border-bottom:1px solid var(--mu-line);}
   .ticket-empty{color:var(--mu-ink-soft);font-size:13px;padding:10px 0;text-align:center;}
 
+  /* ---------- ENTREGA ---------- */
+  .delivery-block{padding:12px 0 4px;border-top:1px solid var(--mu-line);margin-top:6px;}
+  .delivery-title{font-weight:800;color:var(--mu-red);font-size:13.5px;margin-bottom:8px;}
+  .delivery-option{display:flex;align-items:center;gap:8px;font-size:13.5px;padding:4px 0;cursor:pointer;}
+  .delivery-option input{width:auto;}
+  .delivery-details{margin-top:8px;padding-left:2px;}
+  .delivery-details textarea{width:100%;font-family:inherit;font-size:13px;padding:8px 10px;border:1.5px solid var(--mu-line);border-radius:8px;resize:vertical;}
+  .loc-btn{margin-top:8px;background:#fff;border:1.5px solid var(--mu-red);color:var(--mu-red);font-weight:700;font-size:12.5px;padding:8px 12px;border-radius:8px;width:100%;}
+  .loc-status{font-size:12px;color:var(--mu-ink-soft);margin-top:6px;}
+  .loc-status.ok{color:#1E7A34;font-weight:700;}
+
   /* ---------- OVERLAY DE AGRADECIMIENTO ---------- */
   .thanks-overlay{
     position:fixed;inset:0;z-index:400;background:rgba(48,48,48,.7);
@@ -216,7 +227,7 @@
 
 <script>
   // ⚠️ Reemplazá con tu número real (código de país + número, sin espacios ni +)
-  const WHATSAPP_NUMBER = "59170000000";
+  const WHATSAPP_NUMBER = "59170857324";
   const SUPABASE_URL = "https://yjzolvnhxegonljdpbfz.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_S0lJAK4sfBtd53F18myfPg_uUUXWsAN";
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -225,6 +236,7 @@
 
   const cart = {};          // comboKey -> {name, categoryName, variantLabel, unitPrice, qty, requiresDesign}
   const cardSelection = {}; // itemId -> { groupId: optionId }
+  const delivery = { method: null, address: '', mapsUrl: null }; // 'oficina' | 'delivery'
 
   function comboKey(item){
     const groups = item.item_variant_groups || [];
@@ -345,6 +357,74 @@
     return card;
   }
 
+  function deliveryIsValid(){
+    if(delivery.method === 'oficina') return true;
+    if(delivery.method === 'delivery') return !!(delivery.address.trim() || delivery.mapsUrl);
+    return false;
+  }
+
+  function updateWaBtnState(){
+    const lines = Object.values(cart);
+    document.getElementById('waBtn').disabled = lines.length === 0 || !deliveryIsValid();
+  }
+
+  function renderDeliveryBlock(){
+    return `
+      <div class="delivery-block">
+        <div class="delivery-title">Entrega</div>
+        <label class="delivery-option">
+          <input type="radio" name="deliveryMethod" value="oficina" ${delivery.method==='oficina'?'checked':''}>
+          Recoger en oficina
+        </label>
+        <label class="delivery-option">
+          <input type="radio" name="deliveryMethod" value="delivery" ${delivery.method==='delivery'?'checked':''}>
+          Delivery a domicilio
+        </label>
+        ${delivery.method === 'delivery' ? `
+          <div class="delivery-details">
+            <textarea id="deliveryAddress" rows="2" placeholder="Escribí tu dirección de referencia (calle, zona, referencia)">${delivery.address}</textarea>
+            <button type="button" class="loc-btn" id="useLocationBtn">📍 Usar mi ubicación</button>
+            <div class="loc-status ${delivery.mapsUrl ? 'ok' : ''}" id="locStatus">${delivery.mapsUrl ? '✓ Ubicación capturada' : ''}</div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  function bindDeliveryHandlers(){
+    document.querySelectorAll('input[name="deliveryMethod"]').forEach(r => {
+      r.onchange = () => { delivery.method = r.value; renderCartSummary(); };
+    });
+    const addressEl = document.getElementById('deliveryAddress');
+    if(addressEl){
+      addressEl.oninput = (e) => { delivery.address = e.target.value; updateWaBtnState(); };
+    }
+    const locBtn = document.getElementById('useLocationBtn');
+    if(locBtn){
+      locBtn.onclick = () => {
+        if(!navigator.geolocation){
+          alert('Tu navegador no permite compartir ubicación. Escribí la dirección en el campo de arriba.');
+          return;
+        }
+        locBtn.disabled = true;
+        locBtn.textContent = 'Obteniendo ubicación...';
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const { latitude, longitude } = pos.coords;
+            delivery.mapsUrl = `https://maps.google.com/?q=${latitude},${longitude}`;
+            renderCartSummary();
+          },
+          () => {
+            alert('No pudimos obtener tu ubicación. Podés escribir la dirección en el campo de arriba en su lugar.');
+            locBtn.disabled = false;
+            locBtn.textContent = '📍 Usar mi ubicación';
+          },
+          { enableHighAccuracy:true, timeout:10000 }
+        );
+      };
+    }
+  }
+
   function renderCartSummary(){
     const lines = Object.values(cart);
     const totalQty = lines.reduce((s,l) => s + l.qty, 0);
@@ -352,7 +432,6 @@
 
     document.getElementById('cartCount').textContent = totalQty === 0 ? '0 productos' : `${totalQty} producto${totalQty>1?'s':''}`;
     document.getElementById('cartTotal').textContent = fmt(totalPrice) + ' Bs.';
-    document.getElementById('waBtn').disabled = lines.length === 0;
 
     const ticket = document.getElementById('ticket');
     if(lines.length === 0){
@@ -363,8 +442,11 @@
           <span>${l.name}${l.variantLabel ? ' ('+l.variantLabel+')' : ''} × ${l.qty}</span>
           <span>${fmt(l.qty * l.unitPrice)} Bs.</span>
         </div>
-      `).join('') + `<div class="ticket-row" style="font-weight:800;border-top:1.5px solid var(--mu-red);margin-top:4px;padding-top:8px;border-bottom:none;"><span>Total</span><span>${fmt(totalPrice)} Bs.</span></div>`;
+      `).join('') + `<div class="ticket-row" style="font-weight:800;border-top:1.5px solid var(--mu-red);margin-top:4px;padding-top:8px;border-bottom:none;"><span>Total</span><span>${fmt(totalPrice)} Bs.</span></div>`
+        + renderDeliveryBlock();
+      bindDeliveryHandlers();
     }
+    updateWaBtnState();
   }
 
   document.getElementById('ticketToggle').onclick = () => document.getElementById('ticket').classList.toggle('open');
@@ -374,6 +456,10 @@
   document.getElementById('waBtn').onclick = async () => {
     const lines = Object.values(cart);
     if(lines.length === 0) return;
+    if(!deliveryIsValid()){
+      alert(delivery.method ? 'Para delivery, escribí tu dirección o usá el botón de ubicación.' : 'Elegí una opción de entrega antes de confirmar.');
+      return;
+    }
     const totalPrice = lines.reduce((s,l) => s + l.qty * l.unitPrice, 0);
 
     let msg = "Hola, quiero confirmar este pedido en MarketUP:\n\n";
@@ -381,6 +467,14 @@
       msg += `• ${l.name}${l.variantLabel ? ' ('+l.variantLabel+')' : ''} x${l.qty} — ${fmt(l.qty*l.unitPrice)} Bs.\n`;
     });
     msg += `\nTotal: ${fmt(totalPrice)} Bs.`;
+
+    if(delivery.method === 'oficina'){
+      msg += `\n\n📍 Entrega: Retiro en oficina`;
+    } else if(delivery.method === 'delivery'){
+      msg += `\n\n📍 Entrega: Delivery a domicilio`;
+      if(delivery.address.trim()) msg += `\nDirección: ${delivery.address.trim()}`;
+      if(delivery.mapsUrl) msg += `\nUbicación: ${delivery.mapsUrl}`;
+    }
 
     const designItems = lines.filter(l => l.requiresDesign).map(l => l.name);
     if(designItems.length){
@@ -390,7 +484,10 @@
     try{
       await sb.from('orders').insert({
         items: lines.map(l => ({ name:l.name, variant:l.variantLabel, qty:l.qty, subtotal:l.qty*l.unitPrice, requires_custom_design:l.requiresDesign })),
-        total: totalPrice
+        total: totalPrice,
+        delivery_method: delivery.method,
+        delivery_address: delivery.address.trim() || null,
+        delivery_maps_url: delivery.mapsUrl
       });
     }catch(e){ console.warn('No se pudo registrar el pedido:', e); }
 
@@ -403,6 +500,7 @@
     if(lastWhatsappUrl) window.open(lastWhatsappUrl, '_blank');
     document.getElementById('thanksOverlay').classList.remove('open');
     Object.keys(cart).forEach(k => delete cart[k]);
+    delivery.method = null; delivery.address = ''; delivery.mapsUrl = null;
     document.querySelectorAll('.qty').forEach(el => el.textContent = '0');
     document.querySelectorAll('[id^="subtotal-"]').forEach(el => el.textContent = '0.00');
     renderCartSummary();
