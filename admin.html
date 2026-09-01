@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MarketUP — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Urbanist:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --mu-red:#AB1C1F; --mu-red-dark:#8A1518; --mu-ink:#303030; --mu-ink-soft:#4D4D4D;
+    --mu-placeholder:#CCCCCC; --mu-bg:#F7F6F5; --mu-line:#E6E3E2; --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--mu-bg);color:var(--mu-ink);font-family:'Urbanist',sans-serif;}
+  h1,h2,h3{font-weight:800;margin:0;}
+  button{font-family:inherit;cursor:pointer;}
+  input,select,textarea{font-family:inherit;font-size:14px;padding:8px 10px;border:1.5px solid var(--mu-line);border-radius:8px;background:#fff;color:var(--mu-ink);width:100%;}
+  label{font-size:12.5px;font-weight:700;color:var(--mu-ink-soft);display:block;margin-bottom:4px;}
+  .field{margin-bottom:12px;}
+  .btn{background:var(--mu-red);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;font-size:13.5px;}
+  .btn:hover{background:var(--mu-red-dark);}
+  .btn-ghost{background:#fff;color:var(--mu-ink);border:1.5px solid var(--mu-line);border-radius:8px;padding:8px 14px;font-weight:700;font-size:13px;}
+  .btn-danger{background:#fff;color:var(--mu-red);border:1.5px solid var(--mu-red);border-radius:8px;padding:7px 12px;font-weight:700;font-size:12.5px;}
+  .btn-sm{padding:5px 10px;font-size:12px;border-radius:6px;}
+
+  /* login */
+  #loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--mu-ink);}
+  .login-box{background:#fff;border-radius:16px;padding:32px 28px;width:300px;text-align:center;}
+  .login-box h1{color:var(--mu-red);font-size:22px;margin-bottom:18px;}
+  .login-box .field{text-align:left;}
+  #loginError{color:var(--mu-red);font-size:12.5px;display:none;margin-top:8px;}
+
+  /* dashboard */
+  #dashboard{display:none;}
+  header{background:var(--mu-red);color:#fff;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;}
+  header .title{font-size:18px;font-weight:800;}
+  header button{background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12.5px;font-weight:700;}
+  .tabs{display:flex;gap:6px;padding:14px 20px 0;}
+  .tab{background:#fff;border:1.5px solid var(--mu-line);border-bottom:none;border-radius:8px 8px 0 0;padding:9px 18px;font-weight:700;font-size:13.5px;color:var(--mu-ink-soft);}
+  .tab.active{color:var(--mu-red);border-color:var(--mu-red);}
+  .panel{display:none;max-width:960px;margin:0 auto;padding:20px;}
+  .panel.active{display:block;}
+  .card{background:#fff;border:1px solid var(--mu-line);border-radius:var(--radius);padding:16px;margin-bottom:16px;}
+
+  /* categorias */
+  .cat-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--mu-line);}
+  .cat-row:last-child{border-bottom:none;}
+  .cat-row .name{font-weight:700;}
+  .cat-row .slug{color:var(--mu-ink-soft);font-size:12px;margin-left:8px;}
+  .add-cat-row{display:flex;gap:8px;margin-top:12px;}
+  .add-cat-row input{flex:1;}
+
+  /* items list */
+  .item-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--mu-line);}
+  .item-row:last-child{border-bottom:none;}
+  .item-row img, .item-row .noimg{width:44px;height:44px;border-radius:6px;object-fit:cover;background:var(--mu-placeholder);flex:0 0 auto;}
+  .item-row .info{flex:1;min-width:0;}
+  .item-row .info .n{font-weight:700;font-size:14px;}
+  .item-row .info .m{color:var(--mu-ink-soft);font-size:12px;}
+  .status-pill{font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px;text-transform:uppercase;}
+  .status-activo{background:#E4F5E8;color:#1E7A34;}
+  .status-agotado{background:#FDEDEA;color:var(--mu-red);}
+  .status-oculto{background:#EEE;color:var(--mu-ink-soft);}
+  .item-actions{display:flex;gap:6px;flex-wrap:wrap;}
+  .cat-group-title{margin:18px 0 4px;color:var(--mu-red);font-size:14px;font-weight:800;}
+
+  /* form dinamico */
+  .dyn-row{display:flex;gap:8px;margin-bottom:8px;align-items:center;}
+  .dyn-row input{flex:1;}
+  .dyn-remove{background:none;border:none;color:var(--mu-red);font-size:18px;font-weight:800;cursor:pointer;padding:0 6px;}
+  .add-dyn{background:none;border:1.5px dashed var(--mu-line);color:var(--mu-ink-soft);border-radius:8px;padding:7px;width:100%;font-size:12.5px;font-weight:700;margin-top:2px;}
+  .checkbox-row{display:flex;align-items:center;gap:8px;}
+  .checkbox-row input{width:auto;}
+  .img-preview{width:90px;height:90px;border-radius:8px;object-fit:cover;background:var(--mu-placeholder);display:block;margin-bottom:8px;}
+  .form-actions{display:flex;gap:8px;margin-top:16px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  #itemFormTitle{margin-bottom:14px;}
+  .hint{font-size:11.5px;color:var(--mu-ink-soft);margin-top:-8px;margin-bottom:12px;}
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="login-box">
+    <h1>MarketUP admin</h1>
+    <div class="field">
+      <label>Correo</label>
+      <input type="email" id="loginEmail" placeholder="tu@correo.com">
+    </div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input type="password" id="loginPass">
+    </div>
+    <button class="btn" id="loginSubmit" style="width:100%;">Entrar</button>
+    <div id="loginError">Correo o contraseña incorrectos.</div>
+  </div>
+</div>
+
+<div id="dashboard">
+  <header>
+    <span class="title">MarketUP — Admin</span>
+    <button id="logoutBtn">Salir</button>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-panel="categorias">Categorías</button>
+    <button class="tab" data-panel="items">Ítems</button>
+  </div>
+
+  <!-- CATEGORÍAS -->
+  <div class="panel active" id="panel-categorias">
+    <div class="card">
+      <h2 style="margin-bottom:10px;">Categorías</h2>
+      <div id="catList"></div>
+      <div class="add-cat-row">
+        <input type="text" id="newCatName" placeholder="Nombre de la nueva categoría (ej. Bordado)">
+        <button class="btn" id="addCatBtn">Agregar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ITEMS -->
+  <div class="panel" id="panel-items">
+    <div class="card">
+      <h2 id="itemFormTitle">Nuevo ítem</h2>
+
+      <div class="field">
+        <label>Foto del producto</label>
+        <img class="img-preview" id="imgPreview" src="" style="display:none;">
+        <input type="file" id="imgInput" accept="image/*">
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label>Categoría</label>
+          <select id="fCategory"></select>
+        </div>
+        <div class="field">
+          <label>Estado</label>
+          <select id="fStatus">
+            <option value="activo">Activo (visible, disponible)</option>
+            <option value="agotado">Agotado (visible, no disponible)</option>
+            <option value="oculto">Oculto (no aparece en el catálogo)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Nombre</label>
+        <input type="text" id="fName" placeholder="Ej. Tarjeta de presentación">
+      </div>
+
+      <div class="field">
+        <label>Descripción (opcional)</label>
+        <textarea id="fDescription" rows="2" placeholder="Detalle corto del producto"></textarea>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label>Precio (Bs.)</label>
+          <input type="number" id="fPrice" step="0.01" placeholder="0.00">
+        </div>
+        <div class="field">
+          <label>Nota de precio (opcional)</label>
+          <input type="text" id="fPriceNote" placeholder="Ej. precio según cantidad, consultar">
+        </div>
+      </div>
+
+      <div class="checkbox-row field">
+        <input type="checkbox" id="fCustomDesign">
+        <label style="margin:0;">Requiere diseño personalizado (muestra recordatorio de adjuntar diseño por WhatsApp)</label>
+      </div>
+
+      <div class="field">
+        <label>Características fijas</label>
+        <div class="hint">Datos informativos, no elegibles por el cliente. Ej. "Material: Acrílico 3mm"</div>
+        <div id="featuresRows"></div>
+        <button type="button" class="add-dyn" id="addFeatureBtn">+ Agregar característica</button>
+      </div>
+
+      <div class="field">
+        <label>Variantes elegibles por el cliente</label>
+        <div class="hint">Ej. grupo "Color" con opciones "Rojo, Azul, Verde" (separadas por coma)</div>
+        <div id="variantRows"></div>
+        <button type="button" class="add-dyn" id="addVariantBtn">+ Agregar grupo de variantes</button>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn" id="saveItemBtn">Guardar ítem</button>
+        <button class="btn-ghost" id="cancelEditBtn" style="display:none;">Cancelar edición</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-bottom:6px;">Catálogo cargado</h2>
+      <div id="itemsList"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = "https://yjzolvnhxegonljdpbfz.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_S0lJAK4sfBtd53F18myfPg_uUUXWsAN";
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth:{ persistSession:true, autoRefreshToken:true } });
+
+  function fmt(n){ return Number(n).toLocaleString('es-BO',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function slugify(s){
+    return s.toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+  }
+
+  // ---------- LOGIN ----------
+  document.getElementById('loginSubmit').onclick = async () => {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPass').value;
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if(error){ document.getElementById('loginError').style.display = 'block'; }
+    else { showDashboard(); }
+  };
+  document.getElementById('logoutBtn').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+  async function checkSession(){
+    const { data } = await sb.auth.getSession();
+    if(data.session) showDashboard();
+  }
+  function showDashboard(){
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    loadCategories();
+    loadItems();
+  }
+
+  // ---------- TABS ----------
+  document.querySelectorAll('.tab').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-' + btn.dataset.panel).classList.add('active');
+    };
+  });
+
+  // ============================================================
+  // CATEGORÍAS
+  // ============================================================
+  let categories = [];
+
+  async function loadCategories(){
+    const { data, error } = await sb.from('categories').select('*').order('sort_order');
+    categories = (!error && data) ? data : [];
+    renderCategories();
+    renderCategorySelect();
+  }
+
+  function renderCategories(){
+    const list = document.getElementById('catList');
+    if(categories.length === 0){
+      list.innerHTML = '<div class="hint">Todavía no hay categorías.</div>';
+      return;
+    }
+    list.innerHTML = categories.map(c => `
+      <div class="cat-row">
+        <div><span class="name">${c.name}</span><span class="slug">/${c.slug}</span></div>
+        <button class="btn-danger btn-sm" onclick="deleteCategory(${c.id})">Eliminar</button>
+      </div>
+    `).join('');
+  }
+
+  function renderCategorySelect(){
+    const sel = document.getElementById('fCategory');
+    sel.innerHTML = categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  }
+
+  document.getElementById('addCatBtn').onclick = async () => {
+    const input = document.getElementById('newCatName');
+    const name = input.value.trim();
+    if(!name) return;
+    const slug = slugify(name);
+    const sort_order = categories.length ? Math.max(...categories.map(c=>c.sort_order)) + 1 : 1;
+    const { error } = await sb.from('categories').insert({ name, slug, sort_order });
+    if(error){ alert('No se pudo crear la categoría: ' + error.message); return; }
+    input.value = '';
+    loadCategories();
+  };
+
+  window.deleteCategory = async (id) => {
+    if(!confirm('¿Eliminar esta categoría? Si tiene ítems cargados, primero movelos o eliminalos.')) return;
+    const { error } = await sb.from('categories').delete().eq('id', id);
+    if(error){ alert('No se pudo eliminar: ' + error.message); return; }
+    loadCategories();
+  };
+
+  // ============================================================
+  // ÍTEMS
+  // ============================================================
+  let items = [];
+  let editingItemId = null;
+  let imgFile = null;
+  let features = [];      // [{label, value}]
+  let variantGroups = []; // [{name, optionsText}]
+
+  async function loadItems(){
+    const { data, error } = await sb
+      .from('items')
+      .select('*, item_features(*), item_variant_groups(*, item_variant_options(*))')
+      .order('sort_order');
+    items = (!error && data) ? data : [];
+    renderItemsList();
+  }
+
+  function renderItemsList(){
+    const wrap = document.getElementById('itemsList');
+    if(items.length === 0){ wrap.innerHTML = '<div class="hint">Todavía no cargaste ítems.</div>'; return; }
+    let html = '';
+    categories.forEach(cat => {
+      const catItems = items.filter(i => i.category_id === cat.id);
+      if(catItems.length === 0) return;
+      html += `<div class="cat-group-title">${cat.name}</div>`;
+      html += catItems.map(it => `
+        <div class="item-row">
+          ${it.image_url ? `<img src="${it.image_url}">` : `<div class="noimg"></div>`}
+          <div class="info">
+            <div class="n">${it.name} <span class="status-pill status-${it.status}">${it.status}</span></div>
+            <div class="m">${fmt(it.price)} Bs.${it.price_note ? ' · '+it.price_note : ''}</div>
+          </div>
+          <div class="item-actions">
+            <button class="btn-ghost btn-sm" onclick="editItem(${it.id})">Editar</button>
+            <button class="btn-ghost btn-sm" onclick="cycleStatus(${it.id})">Cambiar estado</button>
+            <button class="btn-danger btn-sm" onclick="deleteItem(${it.id})">Eliminar</button>
+          </div>
+        </div>
+      `).join('');
+    });
+    wrap.innerHTML = html || '<div class="hint">Todavía no cargaste ítems.</div>';
+  }
+
+  // ---------- features dinámicas ----------
+  function renderFeatureRows(){
+    document.getElementById('featuresRows').innerHTML = features.map((f, i) => `
+      <div class="dyn-row">
+        <input type="text" placeholder="Etiqueta (ej. Material)" value="${f.label}" oninput="features[${i}].label=this.value">
+        <input type="text" placeholder="Valor (ej. Acrílico 3mm)" value="${f.value}" oninput="features[${i}].value=this.value">
+        <button type="button" class="dyn-remove" onclick="removeFeature(${i})">×</button>
+      </div>
+    `).join('');
+  }
+  document.getElementById('addFeatureBtn').onclick = () => { features.push({label:'',value:''}); renderFeatureRows(); };
+  window.removeFeature = (i) => { features.splice(i,1); renderFeatureRows(); };
+
+  // ---------- variantes dinámicas ----------
+  function renderVariantRows(){
+    document.getElementById('variantRows').innerHTML = variantGroups.map((g, i) => `
+      <div class="dyn-row">
+        <input type="text" placeholder="Grupo (ej. Color)" value="${g.name}" oninput="variantGroups[${i}].name=this.value" style="max-width:140px;">
+        <input type="text" placeholder="Opciones separadas por coma (ej. Rojo, Azul, Verde)" value="${g.optionsText}" oninput="variantGroups[${i}].optionsText=this.value">
+        <button type="button" class="dyn-remove" onclick="removeVariant(${i})">×</button>
+      </div>
+    `).join('');
+  }
+  document.getElementById('addVariantBtn').onclick = () => { variantGroups.push({name:'',optionsText:''}); renderVariantRows(); };
+  window.removeVariant = (i) => { variantGroups.splice(i,1); renderVariantRows(); };
+
+  // ---------- imagen ----------
+  document.getElementById('imgInput').onchange = (e) => {
+    imgFile = e.target.files[0] || null;
+    if(imgFile){
+      const preview = document.getElementById('imgPreview');
+      preview.src = URL.createObjectURL(imgFile);
+      preview.style.display = 'block';
+    }
+  };
+
+  // ---------- form: nuevo / editar ----------
+  function resetForm(){
+    editingItemId = null;
+    imgFile = null;
+    features = [];
+    variantGroups = [];
+    document.getElementById('itemFormTitle').textContent = 'Nuevo ítem';
+    document.getElementById('fName').value = '';
+    document.getElementById('fDescription').value = '';
+    document.getElementById('fPrice').value = '';
+    document.getElementById('fPriceNote').value = '';
+    document.getElementById('fCustomDesign').checked = false;
+    document.getElementById('fStatus').value = 'activo';
+    document.getElementById('imgPreview').style.display = 'none';
+    document.getElementById('imgInput').value = '';
+    document.getElementById('cancelEditBtn').style.display = 'none';
+    renderFeatureRows();
+    renderVariantRows();
+  }
+
+  window.editItem = (id) => {
+    const it = items.find(i => i.id === id);
+    if(!it) return;
+    editingItemId = id;
+    imgFile = null;
+    document.getElementById('itemFormTitle').textContent = 'Editando: ' + it.name;
+    document.getElementById('fCategory').value = it.category_id;
+    document.getElementById('fName').value = it.name;
+    document.getElementById('fDescription').value = it.description || '';
+    document.getElementById('fPrice').value = it.price;
+    document.getElementById('fPriceNote').value = it.price_note || '';
+    document.getElementById('fCustomDesign').checked = it.requires_custom_design;
+    document.getElementById('fStatus').value = it.status;
+    const preview = document.getElementById('imgPreview');
+    if(it.image_url){ preview.src = it.image_url; preview.style.display = 'block'; }
+    else { preview.style.display = 'none'; }
+    document.getElementById('imgInput').value = '';
+    features = (it.item_features || []).slice().sort((a,b)=>a.sort_order-b.sort_order)
+      .map(f => ({ label:f.label, value:f.value }));
+    variantGroups = (it.item_variant_groups || []).slice().sort((a,b)=>a.sort_order-b.sort_order)
+      .map(g => ({ name:g.name, optionsText:(g.item_variant_options||[]).slice().sort((a,b)=>a.sort_order-b.sort_order).map(o=>o.value).join(', ') }));
+    renderFeatureRows();
+    renderVariantRows();
+    document.getElementById('cancelEditBtn').style.display = 'inline-block';
+    document.querySelector('.tab[data-panel="items"]').click();
+    window.scrollTo({top:0, behavior:'smooth'});
+  };
+
+  document.getElementById('cancelEditBtn').onclick = resetForm;
+
+  document.getElementById('saveItemBtn').onclick = async () => {
+    const name = document.getElementById('fName').value.trim();
+    if(!name){ alert('Poné un nombre para el ítem.'); return; }
+    const btn = document.getElementById('saveItemBtn');
+    btn.disabled = true; btn.textContent = 'Guardando...';
+
+    try{
+      let image_url = null;
+      const existing = editingItemId ? items.find(i=>i.id===editingItemId) : null;
+      if(existing) image_url = existing.image_url;
+
+      if(imgFile){
+        const path = `items/${Date.now()}-${slugify(imgFile.name)}`;
+        const { error: upErr } = await sb.storage.from('product-images').upload(path, imgFile, { upsert:true });
+        if(upErr) throw upErr;
+        const { data: pub } = sb.storage.from('product-images').getPublicUrl(path);
+        image_url = pub.publicUrl;
+      }
+
+      const payload = {
+        category_id: Number(document.getElementById('fCategory').value),
+        name,
+        description: document.getElementById('fDescription').value.trim() || null,
+        price: Number(document.getElementById('fPrice').value) || 0,
+        price_note: document.getElementById('fPriceNote').value.trim() || null,
+        requires_custom_design: document.getElementById('fCustomDesign').checked,
+        status: document.getElementById('fStatus').value,
+        image_url
+      };
+
+      let itemId = editingItemId;
+      if(itemId){
+        const { error } = await sb.from('items').update(payload).eq('id', itemId);
+        if(error) throw error;
+        // limpiar características y variantes previas para reemplazarlas
+        await sb.from('item_features').delete().eq('item_id', itemId);
+        await sb.from('item_variant_groups').delete().eq('item_id', itemId);
+      } else {
+        const { data, error } = await sb.from('items').insert(payload).select().single();
+        if(error) throw error;
+        itemId = data.id;
+      }
+
+      // características
+      const featureRows = features.filter(f => f.label.trim() && f.value.trim())
+        .map((f, i) => ({ item_id:itemId, label:f.label.trim(), value:f.value.trim(), sort_order:i }));
+      if(featureRows.length) await sb.from('item_features').insert(featureRows);
+
+      // variantes
+      for(let i=0;i<variantGroups.length;i++){
+        const g = variantGroups[i];
+        if(!g.name.trim() || !g.optionsText.trim()) continue;
+        const { data: groupData, error: gErr } = await sb.from('item_variant_groups')
+          .insert({ item_id:itemId, name:g.name.trim(), sort_order:i }).select().single();
+        if(gErr) throw gErr;
+        const opts = g.optionsText.split(',').map(o=>o.trim()).filter(Boolean)
+          .map((v, j) => ({ group_id:groupData.id, value:v, sort_order:j }));
+        if(opts.length) await sb.from('item_variant_options').insert(opts);
+      }
+
+      resetForm();
+      loadItems();
+    }catch(e){
+      alert('No se pudo guardar: ' + e.message);
+    }finally{
+      btn.disabled = false; btn.textContent = 'Guardar ítem';
+    }
+  };
+
+  window.cycleStatus = async (id) => {
+    const it = items.find(i => i.id === id);
+    if(!it) return;
+    const next = { activo:'agotado', agotado:'oculto', oculto:'activo' }[it.status];
+    const { error } = await sb.from('items').update({ status: next }).eq('id', id);
+    if(error){ alert('No se pudo actualizar: ' + error.message); return; }
+    loadItems();
+  };
+
+  window.deleteItem = async (id) => {
+    if(!confirm('¿Eliminar este ítem definitivamente?')) return;
+    const { error } = await sb.from('items').delete().eq('id', id);
+    if(error){ alert('No se pudo eliminar: ' + error.message); return; }
+    loadItems();
+  };
+
+  resetForm();
+  checkSession();
+</script>
+
+</body>
+</html>
